@@ -10,7 +10,7 @@ CONFIG_PATH = os.path.expanduser('~/.config/wallpaperchanger.conf')
 
 if sys.version_info.major == 2:
     import ConfigParser as configparser
-    import TKinter as tk
+    import Tkinter as tk
 else: # major version == 3
     import configparser
     import tkinter as tk
