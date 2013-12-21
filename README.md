@@ -35,9 +35,9 @@ GUIで眺めながら選びたいよね！
 要は、WMとかからショートカットキーで呼び出す感じのグルー剤のようなものです。
 
 ## Screenshot
-![main](https://raw.github.com/cocu/wallpaperchanger/pic/main.jpg)
-![main](https://raw.github.com/cocu/wallpaperchanger/pic/filtered.jpg)
-![main](https://raw.github.com/cocu/wallpaperchanger/pic/review.jpg)
+![main](https://raw.github.com/cocu/WallpaperChanger/master/pic/main.jpg)
+![main](https://raw.github.com/cocu/WallpaperChanger/master/pic/filtered.jpg)
+![main](https://raw.github.com/cocu/WallpaperChanger/master/pic/review.jpg)
 
 ## 注意
 - プレビューのみPILが必要
