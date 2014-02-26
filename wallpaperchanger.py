@@ -315,7 +315,7 @@ def main():
 
     if arguments.random:
         filenames = changer.get_filenames()
-        idx = random.randint(0, len(filenames) - 1)
+        idx = random.randrange(0, len(filenames))
         filename = filenames[idx]
         changer.call(filename)
         return
