@@ -23,8 +23,9 @@ except ImportError:
 
 
 class WallpaperChanger(object):
-    """
-    Main class
+    """main class
+
+    this contains filenames, config.
     """
 
     def __init__(self):
