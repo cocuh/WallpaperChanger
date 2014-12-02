@@ -1,265 +1,91 @@
 #!/usr/bin/env python
-import os
-import sys
-import subprocess
-import shlex
-import argparse
-import random
+c=lambda k,v:globals().update({k:v})
+i=lambda n:c(n,__import__(n))
 
-CONFIG_PATH = os.path.expanduser('~/.config/wallpaperchanger.conf')
+i('os')
+i('sys')
+i('subprocess')
+i('shlex')
+i('argparse')
+i('random')
+i('itertools')
 
-if sys.version_info.major == 2:
-    import ConfigParser as configparser
-    import Tkinter as tk
-else: # major version == 3
-    import configparser
-    import tkinter as tk
+c('CONFIG_PATH',os.path.expanduser('~/.config/wallpaperchanger.conf'))
 
-try:
-    import PIL.Image
-    import PIL.ImageTk
-except ImportError:
-    PIL = None
+(sys.version_info.major==2 and(
+    c('configparser',__import__('ConfigParser'))or c('tk',__import__('Tkinter'))or c('next',lambda o:o.next())
+)or(
+    i('configparser')or c('tk',__import__('tkinter'))
+))
 
+i('PIL')or i('PIL.Image')or i("PIL.ImageTk") # TODO
 
-class WallpaperChanger(object):
-    """main class
+c("WallpaperChanger",type('WallpaperChanger',(),
+  {
+      '__doc__':"main class\n\n    this contains filenames, config.\n",
+      '__init__':lambda s:s.__dict__.update({'wrap_config':WrapConfig()})or s.wrap_config.load()or s.__dict__.update({'config':s.wrap_config.config,'base_path':os.path.expanduser(s.wrap_config.config.get('Main', 'path'))}),
+      'call':lambda s,fn,ia=False:subprocess.call([l.format(file=fn if ia else os.path.join(s.base_path, fn))for l in shlex.split(s.config.get('Main','command'))])==0and(s.config.set('Wallpaper', 'current', fn)or s.wrap_config.write()),
+      'get_filenames': lambda s:sorted(os.listdir(s.base_path)),
+        'get_abspath': lambda s,fn:os.path.join(s.base_path, fn),
+  }
+))
 
-    this contains filenames, config.
-    """
+c("WrapConfig",type("WrapConfig",(),{
+    "__doc__":"""\nWrap ConfigParser,\n""",
+    "DEFAULT":{'Main':{'path':'~/picture/wallpaper','command':'feh --bg-fill {file}',},'Wallpaper':{'current':'','default':'',}},
+    "__init__":lambda s:s.__dict__.update({"config":configparser.ConfigParser()})or None,
+    'load':lambda s:s.is_exists()and (s.config.read(CONFIG_PATH)and None)or(s.set_default()or s.write()),
+    'write':lambda s:(s.is_exists_parent_directory()or os.makedirs(s._get_parent_path())or True)and(lambda fp:(s.config.write(fp)and None)or fp.close())(open(CONFIG_PATH, 'w')),
+    'set_default':lambda s,ow=False:[(s.config.has_section(sec)or s.config.add_section(sec))and[(ow or not s.config.has_option(sec, opt)and s.config.set(sec,option,s.DEFAULT[sec][opt]))for opt in s.DEFAULT.get(sec, {}).keys()]for sec in s.DEFAULT.keys()]and None,
+    'is_exists_parent_directory':lambda s:os.path.isdir(s._get_parent_path()),
+    'is_exists':lambda s:os.path.exists(CONFIG_PATH),
+    '_get_parent_path':lambda s:os.path.abspath(os.path.dirname(CONFIG_PATH)),
+}))
 
-    def __init__(self):
-        self.wrap_config = WrapConfig()
-        self.wrap_config.load()
-
-        self.config = self.wrap_config.config
-        self.base_path = os.path.expanduser(self.config.get('Main', 'path'))
-
-    def call(self, filename, is_abspath=False):
-        if is_abspath:
-            path = filename
-        else:
-            path = os.path.join(self.base_path, filename)
-        replace_dic = {'file': path}
-        command = []
-
-        # avoid to split filename which includes spaces.
-        for line in shlex.split(self.config.get('Main', 'command')):
-            command.append(line.format(**replace_dic))
-        res = subprocess.call(command)
-        if res == 0:
-            self.config.set('Wallpaper', 'current', filename)
-            self.wrap_config.write()
-
-    def get_filenames(self):
-        return sorted(os.listdir(self.base_path))
-
-    def get_abspath(self, filename):
-        return os.path.join(self.base_path, filename)
-
-
-class WrapConfig(object):
-    """
-    Wrap ConfigParser,
-    """
-    DEFAULT = {
-        'Main': {
-            'path': '~/picture/wallpaper',
-            'command': 'feh --bg-fill {file}',
-        },
-        'Wallpaper': {
-            'current': '',
-            'default': '',
-        }
-    }
-
-    def __init__(self):
-        self.config = configparser.ConfigParser()
-
-    def load(self):
-        """load config file
-        
-        if not exists, make file.
-        """
-        if self.is_exists():
-            self.config.read(CONFIG_PATH)
-        else:
-            self.set_default()
-            self.write()
-
-    def write(self):
-        """save config file,
-        
-        automatically make directory.
-        """
-        if not self.is_exists_parent_directory():
-            parent_path = self._get_parent_path()
-            os.makedirs(parent_path)
-
-        with open(CONFIG_PATH, 'w') as fp:
-            self.config.write(fp)
-
-    def set_default(self, overwrite=False):
-        """set default, referring self.DEFAULT dictionary 
-        
-        if overwrite flag is True, 
-        all config is overwrite.
-        if the flag is False and not exists the option, append.
-        """
-        for section in self.DEFAULT.keys():
-            if not self.config.has_section(section):
-                self.config.add_section(section)
-
-            for option in self.DEFAULT.get(section, {}).keys():
-                if overwrite or not self.config.has_option(section, option):
-                    self.config.set(section, option, self.DEFAULT[section][option])
-
-    def is_exists_parent_directory(self):
-        parent_path = self._get_parent_path()
-        return os.path.isdir(parent_path)
-
-    def is_exists(self):
-        return os.path.exists(CONFIG_PATH)
-
-    def _get_parent_path(self):
-        return os.path.abspath(os.path.dirname(CONFIG_PATH))
-
-
-class Gui(tk.Frame):
-    """
-    Graphical interface for wallpaper selecting.
-    """
-    THUMBNAIL_SIZE = (400, 400)
-
-    def __init__(self, master, changer):
-        self._changer = changer
-        tk.Frame.__init__(self, master)
-        self.pack()
-        self.create_widgets()
-        self.init_binds()
-        self.set_listbox_filenames()
-        self.set_thumbnail()
-
-        self.filename = None
-        self.key = ''
-
-    def create_widgets(self):
-        """init widgets
-        """
-        f_left = tk.Frame(self)
-        f_left.pack({'fill': tk.BOTH, 'side': 'left'})
-
-        self.elem_listbox = tk.Listbox(f_left)
-        self.elem_listbox.pack({'side': 'top', 'fill': tk.BOTH})
-        self.elem_entry = tk.Entry(f_left, textvariable=self.gen_entry_callback())
-        self.elem_entry.pack({'side': 'bottom'})
-        self.elem_entry.focus_set()
-
-        if PIL is not None:
-            f_right = tk.Frame(self)
-            f_right.pack({'fill': tk.BOTH})
-            self.elem_thumbnail = tk.Label(f_right)
-            self.elem_thumbnail.pack({
-                'side': 'right',
-            })
-
+c("Gui",type("Gui",(tk.Frame,),{
+    '__doc__':'\nGraphical interface for wallpaper selecting.\n',
+    'THUMBNAIL_SIZE':(400, 400),
+    '__init__':lambda s,master,ch: s.__dict__.update({'_changer':ch,'filename':None,'key':''})or tk.Frame.__init__(s, master)or s.pack()or s.create_widgets()or s.init_binds()or s.set_listbox_filenames()or s.set_thumbnail(),
+    'create_widgets':lambda s:(lambda fl:fl.pack({'fill': tk.BOTH, 'side': 'left'})or s.__dict__.update({'elem_listbox':tk.Listbox(fl),'elem_entry':tk.Entry(fl,textvariable=s.gen_entry_callback())}))(tk.Frame(s))or s.elem_listbox.pack({'side': 'top', 'fill': tk.BOTH})or s.elem_entry.pack({'side': 'bottom'})or s.elem_entry.focus_set()or PIL is None or(lambda fr:fr.pack({'fill': tk.BOTH})or s.__dict__.update({'elem_thumbnail':tk.Label(fr)}) or s.elem_thumbnail.pack({'side': 'right',}))(tk.Frame(s))or None,
+    'init_binds':lambda s:s.master.bind('<Escape>', s.action_destroy)and s.master.bind('<Return>', s.action_finish)and s.master.bind('<Tab>', s.action_completion)and s.elem_listbox.bind('<<ListboxSelect>>', s.action_select)and s.elem_listbox.bind('<Double-Button-1>', s.action_finish)and None,
+    'action_destroy':lambda s,*args:s.master.destroy(),
+    'action_select':lambda s,e=None:(e and s.__dict__.update({'filename':s.elem_listbox.get(int(s.elem_listbox.curselection()[0]))})or s.set_thumbnail(s.filename))or None,
+    'action_finish':lambda s,*args:(s.filename and s._changer.call(s.filename)or s.action_destroy()),
+    'action_completion':lambda s,*args:(lambda names:(lambda idx:idx and (s.elem_entry.delete(0, tk.END)or s.elem_entry.insert(0, names[0][:idx])and None))(next(itertools.dropwhile(lambda idx:not all(names[0][:idx]in l for l in names[1:]),(len(names[0])-x for x in range(len(names[0])))),None)))(s.get_filtered_filenames(s.key))or 'break',
+    'gen_entry_callback':lambda s:(lambda string_var:string_var.trace('w', lambda name, index, mode, sv=string_var: (lambda sv:(lambda names:s.set_listbox_filenames(names)or len(names)==1 and(s.__dict__.update({'filename':names[0]})or s.set_thumbnail(names[0])or True)or(s.__dict__.update({'filename':None})or s.set_thumbnail()))(s.__dict__.update({'key':sv.get()})or s.get_filtered_filenames(s.key)))(sv))and None or string_var)(tk.StringVar())
     
-    def init_binds(self):
-        """init binds
-        """
-        self.master.bind('<Escape>', self.action_destroy)
-        self.master.bind('<Return>', self.action_finish)
-        self.master.bind('<Tab>', self.action_completion)
-        self.elem_listbox.bind('<<ListboxSelect>>', self.action_select)
-        self.elem_listbox.bind('<Double-Button-1>', self.action_finish)
 
-    def action_destroy(self, *args):
-        """destroy gui
-        
-        callback function
-        """
-        self.master.destroy()
-
-    def action_select(self, event=None):
-        """set thumbnail
-        when select item in listbox, called   
-        
-        callback function
-        """
-        if event is not None:
-            idx = int(self.elem_listbox.curselection()[0])
-            self.filename = self.elem_listbox.get(idx)
-            self.set_thumbnail(self.filename)
+}))
 
 
-    def action_finish(self, *args):
-        """apply new wallpaper by calling Changer.call
-        """
-        if self.filename is not None:
-            self._changer.call(self.filename)
-            self.action_destroy()
+def set_listbox_filenames(s, filenames=None):
+    s.elem_listbox.delete(0, s.elem_listbox.size() - 1)
+    if filenames is None:
+        filenames = s._changer.get_filenames()
+    for name in filenames:
+        s.elem_listbox.insert(tk.END, name)
+Gui.set_listbox_filenames = set_listbox_filenames
 
-    def action_completion(self, *args):
-        """Completion in textbox(Entry).
-        
-        hooked Tab key, and disable default tab action by returning "break".
-        """
-        names = self.get_filtered_filenames(self.key)
-        base = names[0]
-        others = names[1:]
-        for idx in (len(base) - x for x in range(len(base))):
-            flag = True
-            for line in others:
-                if not base[:idx] in line:
-                    flag = False
-            if flag:
-                self.elem_entry.delete(0, tk.END)
-                self.elem_entry.insert(0, base[:idx])
-                break
-        return 'break'
+def set_thumbnail(s, ifilename=None):
+    if PIL is not None:
+        size = s.THUMBNAIL_SIZE
+        thumbnail = PIL.Image.new('RGBA', size, (0, 0, 0, 0))
+        if ifilename is not None:
+            filename = s._changer.get_abspath(ifilename)
+            image = PIL.Image.open(filename)
+            image.thumbnail(size, PIL.Image.ANTIALIAS)
 
-    def gen_entry_callback(self):
-        def callback(sv):
-            self.key = sv.get()
-            names = self.get_filtered_filenames(self.key)
+            offset_x = int(max((size[0] - image.size[0]) / 2, 0))
+            offset_y = int(max((size[1] - image.size[1]) / 2, 0))
+            thumbnail.paste(image, (offset_x, offset_y))
 
-            self.set_listbox_filenames(names)
-            if len(names) == 1:
-                self.filename = names[0]
-                self.set_thumbnail(names[0])
-            else:
-                self.filename = None
-                self.set_thumbnail()
+        s.thumbnail = PIL.ImageTk.PhotoImage(thumbnail)
+        s.elem_thumbnail.configure(image=s.thumbnail)
+Gui.set_thumbnail=set_thumbnail
 
-        string_var = tk.StringVar()
-        string_var.trace('w', lambda name, index, mode, sv=string_var: callback(sv))
-        return string_var
-    
-    def set_listbox_filenames(self, filenames=None):
-        self.elem_listbox.delete(0, self.elem_listbox.size() - 1)
-        if filenames is None:
-            filenames = self._changer.get_filenames()
-        for name in filenames:
-            self.elem_listbox.insert(tk.END, name)
-
-    def set_thumbnail(self, ifilename=None):
-        if PIL is not None:
-            size = self.THUMBNAIL_SIZE
-            thumbnail = PIL.Image.new('RGBA', size, (0, 0, 0, 0))
-            if ifilename is not None:
-                filename = self._changer.get_abspath(ifilename)
-                image = PIL.Image.open(filename)
-                image.thumbnail(size, PIL.Image.ANTIALIAS)
-
-                offset_x = int(max((size[0] - image.size[0]) / 2, 0))
-                offset_y = int(max((size[1] - image.size[1]) / 2, 0))
-                thumbnail.paste(image, (offset_x, offset_y))
-
-            self.thumbnail = PIL.ImageTk.PhotoImage(thumbnail)
-            self.elem_thumbnail.configure(image=self.thumbnail)
-
-    def get_filtered_filenames(self, keyword):
-        return [x for x in self._changer.get_filenames() if x.find(keyword) == 0]
+def get_filtered_filenames(s, keyword):
+    return [x for x in s._changer.get_filenames() if x.find(keyword) == 0]
+Gui.get_filtered_filenames=get_filtered_filenames
 
 
 def parse_argument():
