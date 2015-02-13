@@ -65,7 +65,7 @@ class WrapConfig(object):
     DEFAULT = {
         'Main': {
             'path': '~/picture/wallpaper',
-            'command': 'feh --bg-fill {filepath}',
+            'command': get_default_wallpaper_change_command(),
         },
         'Wallpaper': {
             'current': '',
@@ -261,6 +261,13 @@ class Gui(tk.Frame):
     def get_filtered_filenames(self, keyword):
         return [x for x in self._changer.get_filenames() if x.find(keyword) == 0]
 
+
+def get_default_wallpaper_change_command():
+    system_name = platform.system()
+    if system_name == 'Linux': # linux
+        return 'feh --bg-fill {filepath}'
+    elif system_name == 'Darwin': # mac os x
+        return r'osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"{filepath}\""'
 
 def parse_argument():
     parser = argparse.ArgumentParser(
