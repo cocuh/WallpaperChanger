@@ -5,6 +5,7 @@ import subprocess
 import shlex
 import argparse
 import random
+import platform
 
 CONFIG_PATH = os.path.expanduser('~/.config/wallpaperchanger.conf')
 
@@ -56,6 +57,14 @@ class WallpaperChanger(object):
 
     def get_abspath(self, filename):
         return os.path.join(self.base_path, filename)
+
+
+def get_default_wallpaper_change_command():
+    system_name = platform.system()
+    if system_name == 'Linux': # linux
+        return 'feh --bg-fill {filepath}'
+    elif system_name == 'Darwin': # mac os x
+        return r'osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"{filepath}\""'
 
 
 class WrapConfig(object):
@@ -261,13 +270,6 @@ class Gui(tk.Frame):
     def get_filtered_filenames(self, keyword):
         return [x for x in self._changer.get_filenames() if x.find(keyword) == 0]
 
-
-def get_default_wallpaper_change_command():
-    system_name = platform.system()
-    if system_name == 'Linux': # linux
-        return 'feh --bg-fill {filepath}'
-    elif system_name == 'Darwin': # mac os x
-        return r'osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"{filepath}\""'
 
 def parse_argument():
     parser = argparse.ArgumentParser(
