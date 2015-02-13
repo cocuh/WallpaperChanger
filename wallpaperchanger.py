@@ -40,7 +40,7 @@ class WallpaperChanger(object):
             path = filename
         else:
             path = os.path.join(self.base_path, filename)
-        replace_dic = {'file': path}
+        replace_dic = {'filepath': path}
         command = []
 
         # avoid to split filename which includes spaces.
@@ -65,7 +65,7 @@ class WrapConfig(object):
     DEFAULT = {
         'Main': {
             'path': '~/picture/wallpaper',
-            'command': 'feh --bg-fill {file}',
+            'command': 'feh --bg-fill {filepath}',
         },
         'Wallpaper': {
             'current': '',
@@ -303,7 +303,7 @@ def main():
             filename = os.path.abspath(arguments.filename)
             is_abspath = True
         else:
-            print("'{file}' not found".format(file=arguments.filename))
+            print("'{filename}' not found".format(filename=arguments.filename))
             exit(1)
 
         changer.call(filename, is_abspath)
